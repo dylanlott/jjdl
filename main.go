@@ -28,7 +28,7 @@ var program = []Statement{}
 type Statement struct {
 	variable string
 	operator string
-	value    interface{}
+	argument interface{}
 }
 
 // Lexer is the main struct that is worked on
@@ -51,31 +51,31 @@ func main() {
 	s.Whitespace ^= 1<<'\t' | 1<<'\n'
 
 	l := &Lexer{}
+	l.variables = make(map[Variable]interface{})
 	item := &Statement{}
 	l.current = item
 
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
 		current := s.TokenText()
-		fmt.Printf("position: %+v\n", s.Position)
 
 		switch current {
 		case "?":
-			item.operator = "ifzero"
+			item.operator = "IFZERO"
 		case "=":
-			item.operator = "assignment"
+			item.operator = "ASSIGNMENT"
 			val := scanner.TokenString(s.Peek())
 			// TODO: Need to maybe parse this better?
-			item.value = val
+			item.argument = val
 		case "+=":
-			item.operator = "addition"
+			item.operator = "ADD"
 		case "-=":
-			item.operator = "subtraction"
+			item.operator = "SUB"
 		case "!":
-			item.operator = "print"
+			item.operator = "PRINT"
 		case ";":
-			fmt.Println("END OF STATEMENT")
+			l.mapVariable(item.variable, item.argument)
 			l.statements = append(l.statements, *item)
-			l.current = &Statement{}
+			l.clearCurrent()
 		default:
 			char, _ := readVariable([]byte(s.TokenText()))
 			if char != "" {
@@ -86,8 +86,8 @@ func main() {
 	fmt.Printf("Lexer is %+v\n", l)
 }
 
-func (l *Lexer) mapVariable(key string, value interface{}) {
-	l.variables[Variable(key)] = value
+func (l *Lexer) mapVariable(key string, arg interface{}) {
+	l.variables[Variable(key)] = arg
 	return
 }
 
@@ -98,7 +98,6 @@ func readVariable(token []byte) (string, error) {
 		return "", errors.New("Error reading regex")
 	}
 	if b {
-		// fmt.Printf("variable: %s\n", s.TokenText())
 		return string(token), nil
 	}
 	return "", errors.New("Invalid token name")
