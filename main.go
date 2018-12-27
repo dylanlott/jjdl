@@ -21,9 +21,6 @@ const src = `x=3;`
 // Variable is string
 type Variable string
 
-// variables is a map of variables to interface values
-var variables map[Variable]interface{}
-
 // program holds all of the statements until they are executed
 var program = []Statement{}
 
@@ -34,47 +31,63 @@ type Statement struct {
 	value    interface{}
 }
 
+// Lexer is the main struct that is worked on
+type Lexer struct {
+	variables  map[Variable]interface{}
+	statements []Statement
+	current    *Statement
+	next       interface{}
+	pos        int
+}
+
+func (l *Lexer) clearCurrent() {
+	l.current = nil
+}
+
 func main() {
 	var s scanner.Scanner
 	s.Init(strings.NewReader(src))
-	s.Filename = "example"
+	s.Filename = "jjdl"
 	s.Whitespace ^= 1<<'\t' | 1<<'\n'
+
+	l := &Lexer{}
+	item := &Statement{}
+	l.current = item
 
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
 		current := s.TokenText()
-		statement := &Statement{}
+		fmt.Printf("position: %+v\n", s.Position)
 
 		switch current {
 		case "?":
-			fmt.Println("\n ifzero")
-			statement.operator = "?"
+			item.operator = "ifzero"
 		case "=":
-			fmt.Println("\n assignment")
-			statement.operator = "="
-			fmt.Printf("after assignment, statement is %+v\n", statement)
+			item.operator = "assignment"
+			val := scanner.TokenString(s.Peek())
+			// TODO: Need to maybe parse this better?
+			item.value = val
 		case "+=":
-			fmt.Println("\n addition")
-			statement.operator = "+="
+			item.operator = "addition"
 		case "-=":
-			fmt.Println("\n subtraction")
-			statement.operator = "+-"
+			item.operator = "subtraction"
 		case "!":
-			fmt.Println("\n print")
-			statement.operator = "!"
+			item.operator = "print"
 		case ";":
-			fmt.Println("\n endline")
-			fmt.Printf("statement is %+v\n", statement)
+			fmt.Println("END OF STATEMENT")
+			l.statements = append(l.statements, *item)
+			l.current = &Statement{}
 		default:
-			// handle case where it's not a token of ours
-			s, _ := readVariable([]byte(s.TokenText()))
-
-			fmt.Printf("variable: %+v\n", s)
+			char, _ := readVariable([]byte(s.TokenText()))
+			if char != "" {
+				l.current.variable = char
+			}
 		}
 	}
+	fmt.Printf("Lexer is %+v\n", l)
 }
 
-func mapVariable(key string, value interface{}) {
-	variables[Variable(key)] = value
+func (l *Lexer) mapVariable(key string, value interface{}) {
+	l.variables[Variable(key)] = value
 	return
 }
 
