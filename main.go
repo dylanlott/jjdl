@@ -9,20 +9,15 @@ import (
 	"text/scanner"
 )
 
-// const src = `
-// x = 3;
-// y = 2;
-// ! x;
-// ! y;
-// `
-
-const src = `x=3;`
+const src = `
+x = 3;
+y = 2;
+! x;
+! y;
+`
 
 // Variable is string
 type Variable string
-
-// program holds all of the statements until they are executed
-var program = []Statement{}
 
 // Statement is the struct that holds statement information
 type Statement struct {
@@ -41,14 +36,42 @@ type Lexer struct {
 }
 
 func (l *Lexer) clearCurrent() {
-	l.current = nil
+	l.current = &Statement{}
 }
 
 func main() {
+	BuildStatements()
+}
+
+func (l *Lexer) mapVariable(key string, arg interface{}) {
+	l.variables[Variable(key)] = arg
+	return
+}
+
+func readVariable(token []byte) (string, error) {
+	b, err := regexp.Match("[a-zA-Z][a-zA-Z0-9]*", token)
+	if err != nil {
+		log.Fatalf("error regexp match %+v\n", err)
+		return "", errors.New("Error reading regex")
+	}
+	if b {
+		return string(token), nil
+	}
+	return "", errors.New("Invalid token name")
+}
+
+// Statements returns all statements on the Lexer. If the lexer hasn't been run yet
+// this won't be populated
+func (l *Lexer) Statements() []Statement {
+	return l.statements
+}
+
+// BuildStatements will run lex the input and build statements
+// from the input.
+func BuildStatements() {
 	var s scanner.Scanner
 	s.Init(strings.NewReader(src))
 	s.Filename = "jjdl"
-	s.Whitespace ^= 1<<'\t' | 1<<'\n'
 
 	l := &Lexer{}
 	l.variables = make(map[Variable]interface{})
@@ -77,28 +100,13 @@ func main() {
 			l.statements = append(l.statements, *item)
 			l.clearCurrent()
 		default:
+
 			char, _ := readVariable([]byte(s.TokenText()))
 			if char != "" {
-				l.current.variable = char
+				fmt.Printf("char is %+v\n", char)
+				item.variable = char
 			}
 		}
 	}
 	fmt.Printf("Lexer is %+v\n", l)
-}
-
-func (l *Lexer) mapVariable(key string, arg interface{}) {
-	l.variables[Variable(key)] = arg
-	return
-}
-
-func readVariable(token []byte) (string, error) {
-	b, err := regexp.Match("[a-zA-Z][a-zA-Z0-9]*", token)
-	if err != nil {
-		log.Fatalf("error regexp match %+v\n", err)
-		return "", errors.New("Error reading regex")
-	}
-	if b {
-		return string(token), nil
-	}
-	return "", errors.New("Invalid token name")
 }
