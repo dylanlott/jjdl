@@ -77,6 +77,13 @@ func (l *Lexer) Statements() []Statement {
 	return l.statements
 }
 
+// RunStatements will start to execuse, in order, the statements in the lexer struct
+func (l *Lexer) RunStatements() {
+	for _, statement := range l.statements {
+		fmt.Println(statement)
+	}
+}
+
 // BuildStatements will run lex the input and build statements
 // from the input.
 func BuildStatements() {
@@ -107,6 +114,10 @@ func BuildStatements() {
 		case ";":
 			l.mapVariable(item.variable, item.argument)
 			l.statements = append(l.statements, *item)
+			item.operator = ""
+			item.variable = ""
+			item.argument = nil
+
 			l.clearCurrent()
 		default:
 			char, _ := readVariable([]byte(s.TokenText()))
@@ -121,4 +132,5 @@ func BuildStatements() {
 		}
 	}
 	fmt.Printf("%+v\n", l)
+	l.RunStatements()
 }
