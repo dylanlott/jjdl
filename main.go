@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/scanner"
 )
@@ -32,7 +32,7 @@ type Lexer struct {
 	statements []Statement
 	current    *Statement
 	next       interface{}
-	pos        int
+	position   scanner.Position
 }
 
 func (l *Lexer) clearCurrent() {
@@ -51,13 +51,24 @@ func (l *Lexer) mapVariable(key string, arg interface{}) {
 func readVariable(token []byte) (string, error) {
 	b, err := regexp.Match("[a-zA-Z][a-zA-Z0-9]*", token)
 	if err != nil {
-		log.Fatalf("error regexp match %+v\n", err)
 		return "", errors.New("Error reading regex")
 	}
 	if b {
 		return string(token), nil
 	}
 	return "", errors.New("Invalid token name")
+}
+
+func readInteger(token []byte) (int, error) {
+	matches, err := regexp.Match("[0-9]+", token)
+	if err != nil {
+		return 0, err
+	}
+	if matches {
+		i, err := strconv.Atoi(string(token))
+		return i, err
+	}
+	return 0, errors.New("Invalid token")
 }
 
 // Statements returns all statements on the Lexer. If the lexer hasn't been run yet
@@ -79,16 +90,14 @@ func BuildStatements() {
 	l.current = item
 
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
-		current := s.TokenText()
+		l.next = s.Peek()
+		l.position = s.Pos()
 
-		switch current {
+		switch s.TokenText() {
 		case "?":
 			item.operator = "IFZERO"
 		case "=":
 			item.operator = "ASSIGNMENT"
-			val := scanner.TokenString(s.Peek())
-			// TODO: Need to maybe parse this better?
-			item.argument = val
 		case "+=":
 			item.operator = "ADD"
 		case "-=":
@@ -100,13 +109,16 @@ func BuildStatements() {
 			l.statements = append(l.statements, *item)
 			l.clearCurrent()
 		default:
-
 			char, _ := readVariable([]byte(s.TokenText()))
 			if char != "" {
-				fmt.Printf("char is %+v\n", char)
 				item.variable = char
+			}
+
+			i, err := readInteger([]byte(s.TokenText()))
+			if err == nil {
+				item.argument = i
 			}
 		}
 	}
-	fmt.Printf("Lexer is %+v\n", l)
+	fmt.Printf("%+v\n", l)
 }
